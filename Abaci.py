@@ -1,5 +1,7 @@
+import copy
+
 class Abacus:
-    BEAD, DOT = "⚫", "·"
+    BEAD, DOT = "o", "*"
     
     def __init__(self, partition, k):
         self.partition = sorted(partition)
@@ -22,8 +24,8 @@ class Abacus:
     
     def __str__(self):
         ret = str(self.partition) + '\n\n'
-        for string in self.abacus[::-1]:
-            ret += '├' + '–'.join(string) + '\n'
+        for runner in self.abacus[::-1]:
+            ret += '|-' + '-'.join(runner) + '\n'
         return ret
 
 # The code below does not give the correct value of chi.  See, for example,
@@ -32,20 +34,30 @@ class Abacus:
 #
 # The error comes in because the bead removal process is not runner independent.
 
-    def string_count(self, string):
+# OLD CODE for a single runner
+    def runner_count(self, runner):
         branches = []
-        for i in range(len(string) - 1):
-            if string[i] == self.DOT and string[i+1] == self.BEAD:
-                newstring = list(string)
-                newstring[i] = self.BEAD
-                newstring[i+1] = self.DOT
-                branches.append(newstring)
+        for i in range(len(runner) - 1):
+            if runner[i] == self.DOT and runner[i+1] == self.BEAD:
+                newrunner = list(runner)
+                newrunner[i] = self.BEAD
+                newrunner[i+1] = self.DOT
+                branches.append(newrunner)
         if branches == []:
             return 1
-        return sum([self.string_count(branch) for branch in branches])
-    
-    def chi(self):
-        product = 1
-        for string in self.abacus:
-            product *= self.string_count(string)
-        return product
+        return sum([self.runner_count(branch) for branch in branches])
+
+    def chi(self, abacus=None):
+        if abacus is None:
+            abacus = self.abacus
+        branches = []
+        for runner in range(len(abacus)):
+            for i in range(len(abacus[runner]) - 1):
+                if abacus[runner][i] == self.DOT and abacus[runner][i+1] == self.BEAD:
+                    newabacus = copy.deepcopy(abacus)
+                    newabacus[runner][i] = self.BEAD
+                    newabacus[runner][i+1] = self.DOT
+                    branches.append(newabacus)
+            if branches == []:
+                return 1
+        return sum([self.chi(branch) for branch in branches])
