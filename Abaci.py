@@ -1,7 +1,7 @@
 import copy
 
 class Abacus:
-    BEAD, DOT = "o", "*"
+    BEAD, DOT = "O", "⋆"
 
     def __init__(self, partition, k):
         self.partition = sorted(partition)
@@ -23,7 +23,7 @@ class Abacus:
         return str(self.partition) + " divided by " + str(self.k) + "\n" + str(self.abacus)
 
     def __str__(self):
-        ret = '' 
+        ret = ''
         for runner in self.abacus[::-1]:
             ret += '|-' + '-'.join(runner) + '\n'
         return ret
@@ -73,7 +73,7 @@ class Abacus:
 
 # bead_labels_with_pass gives all possible bead labels along with their associated "pass
 # numbers".  These correspond to rim hook tableaux.
-    
+
     def bead_labels_with_pass(self, abacus=None, bead_labels=None, move_number=None, pass_numbers=None, last_move=None):
         if abacus is None:
             abacus = self.abacus
@@ -94,10 +94,10 @@ class Abacus:
                         new_pass_numbers.append(1)
                     else:
                         if i * self.k + runner < last_move[1] * self.k + last_move[0]:
-                            new_pass_numbers.append(pass_numbers[-1]) 
+                            new_pass_numbers.append(pass_numbers[-1])
                         else:
                             new_pass_numbers.append(pass_numbers[-1] + 1)
-                            
+
                     new_move_number = move_number + 1
 
                     new_bead_labels = copy.deepcopy(bead_labels)
@@ -114,62 +114,20 @@ class Abacus:
 
         return [i for a in [self.bead_labels_with_pass(*b) for b in branches] for i in a]
 
-# Perm class to calculate major index and inversions for permutations (or other
-# sequences).  Also, given a permutation with a given major index, this converts to a
-# permutation with the same number of inversions.
-    
-class Perm:
-    def __init__(self, perm):
-        self.perm = perm
-        self.n = len(perm)
-        self.maj = sum([i+1 for i in range(self.n - 1) if perm[i] > perm[i+1]])
-        self.inv = sum([sum([perm[j] > i for i in perm[j:]]) for j in range(self.n)]) 
-
-    def majtoinv(self):
-        new_perm, j = [], 0
-        while j < self.n:
-            j += 1
-            for k in range(j):
-                perm_with_k = new_perm[:k] + [j] + new_perm[k:]
-                if Perm(perm_with_k).inv == Perm([a for a in self.perm if a <= j]).maj:
-                    new_perm = perm_with_k
-                    break
-        return Perm(new_perm)
-    
-    def invtomaj(self):
-        new_perm, j = [], 0
-        while j < self.n:
-            j += 1
-            for k in range(j):
-                perm_with_k = new_perm[:k] + [j] + new_perm[k:]
-                if Perm(perm_with_k).maj == Perm([a for a in self.perm if a <= j]).inv:
-                    new_perm = perm_with_k
-                    break
-        return Perm(new_perm)
-
-# Code ends here, examples are below
-    
-L = [2,3,3]
+L = [2,3]
+k = 1
 
 for p in sorted(L): print("x"*p)
 print()
 
-A = Abacus(L,1)
+A = Abacus(L,k)
 print(A)
 
-print("There are", len(A.bead_labels_with_pass()), "rim hook tableaux.")
-print()
+BWP = A.bead_labels_with_pass()
 
-for bead_labels, pass_numbers in A.bead_labels_with_pass():
-    print("pass numbers:", pass_numbers)
-    print("bead numbers:", bead_labels)
-    print("q exponent  :", Perm(pass_numbers[::-1]).maj)
-    print()
+print("There are", len(BWP), "rim hook tableaux.")
 
-
-
-
-
-
-
-
+for s, p, a in sorted([[sum(p),p,a] for [a,p] in BWP]):
+    for row in a[::-1]:
+        print('-'.join([''.join([str(p[i-1]) for i in j]) for j in row]))
+    print("with sum", sum(p), "\n")
