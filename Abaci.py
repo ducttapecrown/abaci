@@ -82,9 +82,6 @@ class Abacus:
 
         return [i for a in [self.bead_labels_with_pass(*b) for b in branches] for i in a]
 
-def pass_sequence(a,p):
-    return [[[p[i-1] for i in j] for j in row] for row in a[::-1]]
-
 class Perm:
     def __init__(self, perm):
         self.perm = perm
