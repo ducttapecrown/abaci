@@ -28,57 +28,20 @@ class Abacus:
             ret += '|-' + '-'.join(runner) + '\n'
         return ret
 
-    def chi(self, abacus=None):
-        if abacus is None:
-            abacus = self.abacus
-        branches = []
-        for runner in range(len(abacus)):
-            for i in range(len(abacus[runner]) - 1):
-                if abacus[runner][i] == self.DOT and abacus[runner][i+1] == self.BEAD:
-                    newabacus = copy.deepcopy(abacus)
-                    newabacus[runner][i] = self.BEAD
-                    newabacus[runner][i+1] = self.DOT
-                    branches.append(newabacus)
-        if branches == []:
-            return 1
-        return sum([self.chi(branch) for branch in branches])
-
-    def chi_with_labels(self, abacus=None, edge_labels=None, move_number=None):
-        if abacus is None:
-            abacus = self.abacus
-            edge_labels = [[[] for x in runner[1:]] for runner in abacus]
-            move_number = 0
-
-        branches = []
-
-        for runner in range(len(abacus)):
-            for i in range(len(abacus[runner]) - 1):
-                if abacus[runner][i] == self.DOT and abacus[runner][i+1] == self.BEAD:
-
-                    new_move_number = move_number + 1
-
-                    new_labels = copy.deepcopy(edge_labels)
-                    new_labels[runner][i].append(new_move_number)
-
-                    new_abacus = copy.deepcopy(abacus)
-                    new_abacus[runner][i] = self.BEAD
-                    new_abacus[runner][i+1] = self.DOT
-
-                    branches.append([new_abacus, new_labels, new_move_number])
-
-        if branches == []:
-            return [edge_labels]
-
-        return [i for a in [self.chi_with_labels(*b) for b in branches] for i in a]
-
 # bead_labels_with_pass gives all possible bead labels along with their associated "pass
-# numbers".  These correspond to rim hook tableaux.
+# numbers" and "position sequence". These correspond to rim hook tableaux.
 
-    def bead_labels_with_pass(self, abacus=None, bead_labels=None, move_number=None, pass_numbers=None, last_move=None):
+    def bead_labels_with_pass(self,
+                              abacus = None,
+                              bead_labels = None,
+                              move_number = None,
+                              pass_numbers = None,
+                              pos_sequence = None):
+
         if abacus is None:
             abacus = self.abacus
             bead_labels = [[[] for x in runner if x is self.BEAD] for runner in abacus]
-            move_number, pass_numbers, last_move = 0, [], [0,0]
+            move_number, pass_numbers, pos_sequence = 0, [], []
 
         branches = []
 
@@ -86,14 +49,14 @@ class Abacus:
             for i in range(len(abacus[runner]) - 1):
                 if abacus[runner][i] == self.DOT and abacus[runner][i+1] == self.BEAD:
 
-                    new_last_move = copy.deepcopy(last_move)
-                    new_last_move = [runner,i]
+                    new_pos_sequence = copy.deepcopy(pos_sequence)
+                    new_pos_sequence.append(i * self.k + runner + 1)
 
                     new_pass_numbers = copy.deepcopy(pass_numbers)
                     if new_pass_numbers == []:
                         new_pass_numbers.append(1)
                     else:
-                        if i * self.k + runner < last_move[1] * self.k + last_move[0]:
+                        if new_pos_sequence[-1] < pos_sequence[-1]:
                             new_pass_numbers.append(pass_numbers[-1])
                         else:
                             new_pass_numbers.append(pass_numbers[-1] + 1)
@@ -107,14 +70,83 @@ class Abacus:
                     new_abacus[runner][i] = self.BEAD
                     new_abacus[runner][i+1] = self.DOT
 
-                    branches.append([new_abacus, new_bead_labels, new_move_number, new_pass_numbers, new_last_move])
+                    branches.append([new_abacus,
+                                     new_bead_labels,
+                                     new_move_number,
+                                     new_pass_numbers,
+                                     new_pos_sequence])
 
         if branches == []:
-            return [(bead_labels, pass_numbers)]
+            return [([[[pass_numbers[i-1] for i in j] for j in row] for row in bead_labels[::-1]],
+                     [max(self.partition) + len(self.partition) - a for a in pos_sequence])]
 
         return [i for a in [self.bead_labels_with_pass(*b) for b in branches] for i in a]
 
-L = [2,3]
+def pass_sequence(a,p):
+    return [[[p[i-1] for i in j] for j in row] for row in a[::-1]]
+
+class Perm:
+    def __init__(self, perm):
+        self.perm = perm
+        self.n = len(perm)
+        self.maj = sum([i+1 for i in range(self.n - 1) if perm[i] > perm[i+1]])
+        self.inv = sum([sum([perm[j] > i for i in perm[j:]]) for j in range(self.n)])
+
+# The RSK algorithm
+
+# Insert the integer j into P.  Returns new P and the insert row.
+def row_insert(j, P=None, row=None):
+    if P is None:
+        return ([[j]], 0)
+    if row is None:
+        row = 0
+
+    newP = copy.deepcopy(P)
+
+    if row == len(P):
+        newP.append([j])
+        return (newP, row)
+
+    if P[row][-1] <= j:
+        newP[row].append(j)
+        return (newP, row)
+
+    a = len([n for n in P[row] if n <= j])
+    newP[row][a] = j
+
+    return row_insert(P[row][a], newP, row + 1)
+
+# The RSK algorithm for a word of integers.
+def RSK(word, P=None, Q=None, i=None):
+    if i is None:
+        i = 0
+    if i == len(word):
+        return (P,Q)
+
+    newP, r = row_insert(word[i], P)
+    if Q is None:
+        newQ = [[1]]
+    else:
+        newQ = copy.deepcopy(Q)
+        if r == len(newQ):
+            newQ.append([i+1])
+        else:
+            newQ[r].append(i+1)
+
+    return RSK(word, newP, newQ, i+1)
+
+def major_index_tableau(Q):
+    pairs = [i for a in [[(n, row) for n in Q[row]] for row in range(len(Q))] for i in a]
+    maj = 0
+    for (n,row) in pairs:
+        next = [(j,r) for (j,r) in pairs if j == n+1]
+        if next != [] and next[0][1] > row:
+            maj += n
+    return maj
+
+# Examples below.
+
+L = [1,2,3]
 k = 1
 
 for p in sorted(L): print("x"*p)
@@ -123,11 +155,19 @@ print()
 A = Abacus(L,k)
 print(A)
 
-BWP = A.bead_labels_with_pass()
+BWP = sorted([(Perm(s).maj, p, s) for (p,s) in A.bead_labels_with_pass()])
+BWP = [(p,s) for (m,p,s) in BWP]
 
 print("There are", len(BWP), "rim hook tableaux.")
+print()
 
-for s, p, a in sorted([[sum(p),p,a] for [a,p] in BWP]):
-    for row in a[::-1]:
-        print('-'.join([''.join([str(p[i-1]) for i in j]) for j in row]))
-    print("with sum", sum(p), "\n")
+# Prints the major index of the position sequence (giving the q weight), the
+# pass sequence, the position sequence, and the P and Q tableaux from RSK
+# applied to the position sequence.
+
+for p,s in BWP:
+    print(Perm(s).maj, " ",
+          p, " ",
+          ''.join([str(n) for n in s]), " ",
+          RSK(s)[0], " ",
+          RSK(s)[1])
